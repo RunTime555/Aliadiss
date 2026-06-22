@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  STORE_OWNER
+  SUPER_ADMIN
+}
+
+enum StoreStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum WarrantyType {
+  OFFICIAL
+  SELLER
+  NONE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductCategory {
+  PHONE
+  LAPTOP
+  ACCESSORY
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  avatarUrl    String?
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  store        Store?
+  orders       Order[]
+  @@map("users")
+}
+
+model Store {
+  id               String      @id @default(cuid())
+  name             String
+  description      String?
+  logoUrl          String?
+  legalName        String
+  legalCredentials String
+  city             String
+  address          String?
+  status           StoreStatus @default(PENDING)
+  commissionRate   Float       @default(0.05)
+  rejectionReason  String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  ownerId          String      @unique
+  owner            User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products         Product[]
+  sales            Sale[]
+  @@map("stores")
+}
+
+model Product {
+  id               String          @id @default(cuid())
+  title            String
+  description      String
+  category         ProductCategory @default(PHONE)
+  condition        String          @default("New")
+  priceBirr        Float
+  imageUrl         String?
+  warrantyType     WarrantyType    @default(NONE)
+  warrantyMonths   Int             @default(0)
+  status           ProductStatus   @default(PENDING)
+  rejectionReason  String?
+  stock            Int             @default(1)
+  featured         Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  screenSizeIn     String?
+  screenResolution String?
+  cameraMp         String?
+  ramGb            String?
+  processorType    String?
+  batteryMah       String?
+  storageGb        String?
+  storeId          String
+  store            Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
+  sales            Sale[]
+  @@map("products")
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  status     OrderStatus @default(PENDING)
+  totalBirr  Float
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  customerId String
+  customer   User        @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+  sales      Sale[]
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  qty       Int
+  unitPrice Float
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  @@map("order_items")
+}
+
+model Sale {
+  id             String   @id @default(cuid())
+  amountBirr     Float
+  commissionBirr Float
+  commissionRate Float
+  createdAt      DateTime @default(now())
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id])
+  @@map("sales")
+}
